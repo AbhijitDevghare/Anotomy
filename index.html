@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Interactive Muscle Pain Map</title>
+    <style>
+:root {
+  --primary-color: #2c7be5;
+  --accent-color: #00a8a8;
+  --text-color: #1c2b36;
+  --page-bg: #ffffff;
+  --ink: var(--text-color);
+  --muted: #5d7285;
+  --card-bg: rgba(255, 255, 255, 0.96);
+  --card-border: rgba(44, 123, 229, 0.2);
+  --pain-red: #ff2f3f;
+  --path-stroke: rgba(255, 55, 72, 0.2);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--page-bg);
+  color: var(--ink);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+.pain-map-section {
+  width: 100%;
+  padding: 48px 16px 56px;
+  background: var(--page-bg);
+}
+
+.container {
+  width: min(96vw, 920px);
+  margin: 0 auto;
+  text-align: center;
+}
+
+.pain-map-heading {
+  margin: 0 0 8px;
+  font-size: clamp(1.4rem, 2vw + 1rem, 2.2rem);
+  color: var(--text-color);
+  letter-spacing: 0.02em;
+}
+
+.pain-map-subtitle {
+  margin: 0 0 28px;
+  color: var(--muted);
+  font-size: clamp(0.9rem, 0.7vw + 0.7rem, 1.05rem);
+}
+
+.anatomy-container {
+  position: relative;
+  width: min(96vw, 610px);
+  margin: 0 auto;
+  aspect-ratio: 3124 / 5284;
+  border-radius: 18px;
+  overflow: visible;
+  box-shadow:
+    0 12px 36px rgba(31, 56, 78, 0.16),
+    inset 0 0 0 1px rgba(27, 61, 87, 0.12);
+  background:
+    linear-gradient(180deg, rgba(228, 241, 255, 0.56), rgba(255, 255, 255, 0.9)),
+    #ffffff;
+}
+
+.anatomy-image,
+.overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.anatomy-image {
+  object-fit: fill;
+  user-select: none;
+  pointer-events: none;
+  filter: hue-rotate(170deg) saturate(270%) contrast(1.12) brightness(0.88);
+}
+
+.overlay {
+  pointer-events: none;
+  overflow: visible;
+}
+
+.muscle-path {
+  pointer-events: all;
+  fill: var(--pain-red);
+  fill-opacity: 0;
+  stroke: var(--path-stroke);
+  stroke-opacity: 0;
+  stroke-width: 2.2;
+  cursor: pointer;
+  transition:
+    fill-opacity 0.22s ease,
+    stroke-opacity 0.22s ease,
+    filter 0.22s ease;
+}
+
+.muscle-path[id^="hand-"],
+.muscle-path[id^="quadriceps"],
+.muscle-path[id^="hamstrings"],
+.muscle-path[id^="tensor-fasciae-latae"],
+.muscle-path[id^="adductor-group"],
+.muscle-path[id^="sartorius"],
+.muscle-path[id^="knee"],
+.muscle-path[id^="calves"],
+.muscle-path[id^="tibialis-anterior"],
+.muscle-path[id^="ankles"] {
+  stroke-width: 4.8;
+}
+
+.anatomy-container.show-regions .muscle-path {
+  fill-opacity: 0.08;
+  stroke-opacity: 0.4;
+}
+
+.muscle-path:hover,
+.muscle-path:focus-visible,
+.muscle-path.active {
+  fill-opacity: 0.42;
+  stroke-opacity: 0.95;
+  filter: drop-shadow(0 0 7px rgba(255, 42, 58, 0.75));
+}
+
+.anatomy-container.show-regions .muscle-path:hover,
+.anatomy-container.show-regions .muscle-path:focus-visible,
+.anatomy-container.show-regions .muscle-path.active {
+  fill-opacity: 0.42;
+  stroke-opacity: 0.95;
+}
+
+.muscle-path:focus-visible {
+  outline: none;
+}
+
+.hover-preview {
+  position: absolute;
+  z-index: 14;
+  width: clamp(180px, 30vw, 265px);
+  padding: 8px 11px;
+  border-radius: 10px;
+  border: 1px solid rgba(22, 63, 94, 0.35);
+  background: rgba(20, 58, 88, 0.92);
+  color: #f4fbff;
+  font-size: 0.78rem;
+  letter-spacing: 0.01em;
+  text-align: left;
+  white-space: normal;
+  pointer-events: none;
+  box-shadow:
+    0 8px 20px rgba(14, 35, 54, 0.24),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  will-change: left, top, opacity, transform;
+}
+
+.hover-preview.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hover-name {
+  margin: 0 0 4px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #ffffff;
+}
+
+.hover-description {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.3;
+  color: #dcefff;
+}
+
+.tooltip-card {
+  position: absolute;
+  z-index: 20;
+  max-width: min(280px, 84%);
+  text-align: left;
+  padding: 14px 14px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  box-shadow:
+    0 14px 34px rgba(20, 44, 68, 0.25),
+    0 2px 8px rgba(20, 44, 68, 0.1);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.tooltip-card.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tooltip-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: 0;
+  background: #eaf3ff;
+  color: #184b75;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.tooltip-close:hover {
+  background: #dcecff;
+}
+
+.tooltip-card h2 {
+  margin: 0 26px 7px 0;
+  font-size: 1.1rem;
+  color: #163b59;
+}
+
+.tooltip-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #2e4f67;
+}
+
+.pain-line {
+  margin-top: 8px !important;
+}
+
+.function-line {
+  margin-top: 8px !important;
+}
+
+@media (max-width: 760px) {
+  .anatomy-container {
+    width: min(98vw, 520px);
+    border-radius: 12px;
+  }
+
+  .tooltip-card {
+    max-width: min(250px, 90%);
+    font-size: 0.92rem;
+  }
+
+  .hover-preview {
+    width: min(220px, 88%);
+  }
+}
+
+@media (max-width: 768px) {
+  .tooltip-card {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) !important;
+    max-width: min(320px, 92vw);
+    z-index: 100;
+  }
+
+  .tooltip-card.visible {
+    transform: translate(-50%, -50%) !important;
+  }
+}
+    </style>
+  </head>
+  <body>
+    <section class="pain-map-section">
+      <div class="container">
+        <h2 class="pain-map-heading">Where Do You Feel Pain?</h2>
+        <p class="pain-map-subtitle">Select a muscle region to learn possible causes and treatments.</p>
+        <div class="anatomy-container" id="anatomyContainer">
+          <img
+            class="anatomy-image"
+            id="anatomyImage"
+            src="https://upload.wikimedia.org/wikipedia/commons/b/ba/1105_Anterior_View_of_Muscles_High-Res.png"
+            alt="Front view human muscular anatomy"
+            loading="lazy"
+          />
+
+        <svg
+          class="overlay"
+          viewBox="0 0 1000 1692"
+          preserveAspectRatio="none"
+          aria-label="Interactive muscle regions"
+          role="img"
+        >
+          <g id="muscleRegions">
+            <path id="frontalis" class="muscle-path" data-muscle="frontalis" tabindex="0" d="M446 38 C425 47 414 69 421 88 C428 106 447 114 468 108 C482 104 491 90 492 73 C493 52 476 39 446 38 Z M554 38 C575 47 586 69 579 88 C572 106 553 114 532 108 C518 104 509 90 508 73 C507 52 524 39 554 38 Z" />
+            <path id="temporalis" class="muscle-path" data-muscle="temporalis" tabindex="0" d="M442 74 C420 84 406 106 409 128 C412 151 430 163 452 159 C466 156 474 143 476 126 C479 103 467 84 442 74 Z M558 74 C580 84 594 106 591 128 C588 151 570 163 548 159 C534 156 526 143 524 126 C521 103 533 84 558 74 Z" />
+            <path id="jaw-muscles" class="muscle-path" data-muscle="jaw-muscles" tabindex="0" d="M438 162 C418 177 409 205 420 227 C431 251 452 258 474 250 C486 246 495 234 497 219 C501 196 490 172 468 162 Z M562 162 C582 177 591 205 580 227 C569 251 548 258 526 250 C514 246 505 234 503 219 C499 196 510 172 532 162 Z" />
+
+            <path id="neck-muscles" class="muscle-path" data-muscle="neck-muscles" tabindex="0" d="M468 238 C446 252 436 282 444 315 C451 344 469 359 490 353 C500 350 508 339 511 324 C518 291 506 252 487 236 Z M532 238 C554 252 564 282 556 315 C549 344 531 359 510 353 C500 350 492 339 489 324 C482 291 494 252 513 236 Z" />
+            <path id="sternocleidomastoid" class="muscle-path" data-muscle="sternocleidomastoid" tabindex="0" d="M486 218 C468 230 452 258 445 290 C438 324 444 352 459 365 C473 376 491 367 500 346 C511 320 510 279 503 246 C499 230 493 221 486 218 Z M514 218 C532 230 548 258 555 290 C562 324 556 352 541 365 C527 376 509 367 500 346 C489 320 490 279 497 246 C501 230 507 221 514 218 Z" />
+
+            <path id="deltoid" class="muscle-path" data-muscle="deltoid" tabindex="0" d="M302 312 C257 333 229 379 228 435 C227 486 249 530 285 551 C316 568 345 554 359 522 C374 487 377 445 369 401 C360 353 337 321 302 312 Z M698 312 C743 333 771 379 772 435 C773 486 751 530 715 551 C684 568 655 554 641 522 C626 487 623 445 631 401 C640 353 663 321 698 312 Z" />
+            <path id="pectoralis-major" class="muscle-path" data-muscle="pectoralis-major" tabindex="0" d="M364 336 C336 371 334 430 358 477 C385 531 436 559 494 548 C515 544 523 529 518 507 C503 444 486 390 454 350 C431 321 390 314 364 336 Z M636 336 C664 371 666 430 642 477 C615 531 564 559 506 548 C485 544 477 529 482 507 C497 444 514 390 546 350 C569 321 610 314 636 336 Z" />
+
+            <path id="biceps" class="muscle-path" data-muscle="biceps" tabindex="0" d="M279 540 C247 576 228 632 231 700 C234 766 257 824 295 860 C322 886 350 876 362 842 C382 784 372 684 344 604 C328 558 305 530 279 540 Z M721 540 C753 576 772 632 769 700 C766 766 743 824 705 860 C678 886 650 876 638 842 C618 784 628 684 656 604 C672 558 695 530 721 540 Z" />
+            <path id="triceps" class="muscle-path" data-muscle="triceps" tabindex="0" d="M219 535 C188 575 171 638 176 711 C182 798 210 870 252 902 C276 921 302 909 315 878 C338 823 328 722 296 629 C277 572 250 533 219 535 Z M781 535 C812 575 829 638 824 711 C818 798 790 870 748 902 C724 921 698 909 685 878 C662 823 672 722 704 629 C723 572 750 533 781 535 Z" />
+            <path id="forearm-extensors" class="muscle-path" data-muscle="forearm-extensors" tabindex="0" transform="translate(0,-56)" d="M190 888 C163 928 150 982 154 1040 C158 1101 179 1158 215 1193 C238 1215 265 1209 279 1180 C304 1126 304 1034 284 951 C270 894 227 859 190 888 Z M810 888 C837 928 850 982 846 1040 C842 1101 821 1158 785 1193 C762 1215 735 1209 721 1180 C696 1126 696 1034 716 951 C730 894 773 859 810 888 Z" />
+
+            <path id="rectus-abdominis" class="muscle-path" data-muscle="rectus-abdominis" tabindex="0" d="M451 575 C424 600 414 646 419 693 C424 742 441 784 467 810 C486 829 509 824 521 800 C539 763 539 681 523 617 C511 570 481 549 451 575 Z M549 575 C576 600 586 646 581 693 C576 742 559 784 533 810 C514 829 491 824 479 800 C461 763 461 681 477 617 C489 570 519 549 549 575 Z M458 809 C432 836 422 881 426 930 C430 984 447 1032 474 1063 C493 1085 518 1079 532 1048 C551 1005 550 920 533 854 C520 808 488 786 458 809 Z M542 809 C568 836 578 881 574 930 C570 984 553 1032 526 1063 C507 1085 482 1079 468 1048 C449 1005 450 920 467 854 C480 808 512 786 542 809 Z" />
+            <path id="obliques" class="muscle-path" data-muscle="obliques" tabindex="0" d="M372 628 C341 665 327 723 331 786 C335 856 358 918 395 963 C423 998 453 989 464 949 C479 895 465 810 437 724 C420 672 399 634 372 628 Z M628 628 C659 665 673 723 669 786 C665 856 642 918 605 963 C577 998 547 989 536 949 C521 895 535 810 563 724 C580 672 601 634 628 628 Z" />
+
+            <path id="quadriceps" class="muscle-path" data-muscle="quadriceps" tabindex="0" d="M430 955 C395 1008 379 1093 387 1181 C396 1265 423 1346 464 1398 C493 1434 527 1425 544 1382 C571 1311 564 1185 534 1074 C513 998 476 936 430 955 Z M570 955 C605 1008 621 1093 613 1181 C604 1265 577 1346 536 1398 C507 1434 473 1425 456 1382 C429 1311 436 1185 466 1074 C487 998 524 936 570 955 Z" />
+            <path id="hamstrings" class="muscle-path" data-muscle="hamstrings" tabindex="0" d="M352 987 C320 1043 309 1128 319 1213 C330 1294 357 1367 398 1415 C424 1445 452 1439 467 1401 C491 1339 484 1237 458 1137 C439 1065 406 1003 352 987 Z M648 987 C680 1043 691 1128 681 1213 C670 1294 643 1367 602 1415 C576 1445 548 1439 533 1401 C509 1339 516 1237 542 1137 C561 1065 594 1003 648 987 Z" />
+
+            <path id="calves" class="muscle-path" data-muscle="calves" tabindex="0" d="M421 1420 C389 1454 374 1501 380 1548 C386 1594 406 1632 437 1654 C460 1670 485 1665 501 1639 C523 1605 527 1549 513 1500 C502 1463 468 1431 421 1420 Z M579 1420 C611 1454 626 1501 620 1548 C614 1594 594 1632 563 1654 C540 1670 515 1665 499 1639 C477 1605 473 1549 487 1500 C498 1463 532 1431 579 1420 Z" />
+            <path id="tibialis-anterior" class="muscle-path" data-muscle="tibialis-anterior" tabindex="0" d="M470 1494 C442 1518 430 1556 435 1592 C440 1626 456 1654 480 1671 C498 1683 519 1678 531 1656 C548 1625 549 1573 535 1529 C525 1497 500 1479 470 1494 Z M530 1494 C558 1518 570 1556 565 1592 C560 1626 544 1654 520 1671 C502 1683 481 1678 469 1656 C452 1625 451 1573 465 1529 C475 1497 500 1479 530 1494 Z" />
+            <path id="ankles" class="muscle-path" data-muscle="ankles" tabindex="0" d="M454 1626 C436 1638 427 1656 432 1671 C437 1686 451 1696 468 1697 C484 1697 497 1687 503 1673 C509 1658 501 1641 486 1629 Z M546 1626 C564 1638 573 1656 568 1671 C563 1686 549 1696 532 1697 C516 1697 503 1687 497 1673 C491 1658 499 1641 514 1629 Z" />
+          </g>
+        </svg>
+
+        <div class="hover-preview" id="hoverPreview" hidden>
+          <p class="hover-name" id="hoverName"></p>
+          <p class="hover-description" id="hoverDescription"></p>
+        </div>
+
+        <aside class="tooltip-card" id="tooltipCard" hidden>
+          <button class="tooltip-close" id="tooltipClose" aria-label="Close details">
+            x
+          </button>
+          <h2 id="tooltipName">Muscle</h2>
+          <p id="tooltipDescription"></p>
+          <p class="function-line">
+            <strong>Function:</strong>
+            <span id="tooltipFunction"></span>
+          </p>
+          <p class="pain-line">
+            <strong>Possible pain reason:</strong>
+            <span id="tooltipPain"></span>
+          </p>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+    <script>
+document.addEventListener("DOMContentLoaded", function () {
+  const muscles = {
+    frontalis: {
+      name: "Frontalis",
+      description: "Forehead muscle that lifts the eyebrows and wrinkles the brow.",
+      function: "Elevates the eyebrows and assists facial expression.",
+      pain: "Pain may be linked to facial tension, stress, or headache-related strain."
+    },
+    temporalis: {
+      name: "Temporalis",
+      description: "Fan-shaped muscle on the side of the skull involved in chewing.",
+      function: "Elevates and retracts the jaw during biting and mastication.",
+      pain: "Pain may be linked to jaw clenching, TMJ stress, or tension headaches."
+    },
+    "jaw-muscles": {
+      name: "Jaw Muscles",
+      description: "Masseter-dominant region that powers chewing and jaw closure.",
+      function: "Generates bite force and stabilizes mandibular movement.",
+      pain: "Pain may indicate bruxism, overuse, or temporomandibular dysfunction."
+    },
+    "neck-muscles": {
+      name: "Neck Muscles",
+      description: "Anterior cervical muscles that support head position and control motion.",
+      function: "Supports neck flexion, extension, and postural stabilization.",
+      pain: "Pain may result from poor posture, strain, or sustained static loading."
+    },
+    sternocleidomastoid: {
+      name: "Sternocleidomastoid",
+      description: "Prominent neck muscle running from mastoid to clavicle and sternum.",
+      function: "Rotates and flexes the neck while stabilizing the head.",
+      pain: "Pain may come from whiplash, posture imbalance, or muscle trigger points."
+    },
+    deltoid: {
+      name: "Deltoid",
+      description: "Primary shoulder cap muscle spanning anterior, lateral, and posterior fibers.",
+      function: "Abducts and rotates the arm during lifting and reaching tasks.",
+      pain: "Pain may indicate tendon irritation, impingement, or muscle overload."
+    },
+    "pectoralis-major": {
+      name: "Pectoralis Major",
+      description: "Large superficial chest muscle connecting sternum and humerus.",
+      function: "Adducts, flexes, and internally rotates the shoulder.",
+      pain: "Pain may occur with pushing overload, strain, or shoulder compensation."
+    },
+    biceps: {
+      name: "Biceps",
+      description: "Anterior upper-arm muscle crossing shoulder and elbow joints.",
+      function: "Flexes the elbow and supinates the forearm during pulling.",
+      pain: "Possible pain includes strain, overuse, or biceps tendon irritation."
+    },
+    triceps: {
+      name: "Triceps",
+      description: "Posterior upper-arm extensor with three muscle heads.",
+      function: "Extends the elbow during pushing and stabilization tasks.",
+      pain: "Pain may indicate overload, extension strain, or tendon inflammation."
+    },
+    "forearm-extensors": {
+      name: "Forearm Extensors",
+      description: "Posterolateral forearm group extending wrist and fingers.",
+      function: "Stabilizes wrist extension during grasp and load transfer.",
+      pain: "Pain may occur with repetitive extension or lateral elbow strain."
+    },
+    "rectus-abdominis": {
+      name: "Rectus Abdominis",
+      description: "Central abdominal wall muscle running vertically through the trunk.",
+      function: "Supports trunk flexion and core bracing under load.",
+      pain: "Pain may indicate abdominal strain, overload, or poor trunk mechanics."
+    },
+    obliques: {
+      name: "Obliques",
+      description: "Lateral abdominal layers on each side of the trunk.",
+      function: "Drive trunk rotation and side-bending while stabilizing core.",
+      pain: "Pain may follow twisting strain, overuse, or side-loading stress."
+    },
+    quadriceps: {
+      name: "Quadriceps",
+      description: "Four-muscle anterior thigh group crossing hip and knee.",
+      function: "Extends the knee and supports deceleration in gait.",
+      pain: "Pain may result from running load, tendon stress, or strain."
+    },
+    hamstrings: {
+      name: "Hamstrings",
+      description: "Posterior thigh group spanning hip and knee joints.",
+      function: "Flexes the knee and extends the hip during locomotion.",
+      pain: "Pain may indicate strain, reduced flexibility, or overuse."
+    },
+    calves: {
+      name: "Calf Muscles",
+      description: "Posterior lower-leg gastrocnemius-soleus muscle complex.",
+      function: "Plantarflexes the ankle for walking, running, and push-off.",
+      pain: "Pain may indicate cramping, strain, tightness, or Achilles overload."
+    },
+    "tibialis-anterior": {
+      name: "Tibialis Anterior",
+      description: "Front shin muscle along the lateral tibia.",
+      function: "Dorsiflexes the ankle and controls foot placement during gait.",
+      pain: "Pain may occur from overuse, running volume, or shin-splint irritation."
+    },
+    ankles: {
+      name: "Ankle Region",
+      description: "Distal joint region controlling foot mobility and stability.",
+      function: "Supports load transfer, balance, and directional movement.",
+      pain: "Pain may be linked to sprain, tendon irritation, or repetitive impact."
+    }
+  };
+
+  const anatomyContainer = document.getElementById("anatomyContainer");
+  const tooltipCard = document.getElementById("tooltipCard");
+  const tooltipName = document.getElementById("tooltipName");
+  const tooltipDescription = document.getElementById("tooltipDescription");
+  const tooltipFunction = document.getElementById("tooltipFunction");
+  const tooltipPain = document.getElementById("tooltipPain");
+  const tooltipClose = document.getElementById("tooltipClose");
+  const hoverPreview = document.getElementById("hoverPreview");
+  const hoverName = document.getElementById("hoverName");
+  const hoverDescription = document.getElementById("hoverDescription");
+  const musclePaths = Array.from(document.querySelectorAll(".muscle-path"));
+
+  let activePath = null;
+  let hoverHideTimer = null;
+  let hoverAnimationId = 0;
+  let hoverTargetPos = { left: 0, top: 0 };
+  let hoverCurrentPos = { left: 0, top: 0 };
+  let muscleIndex = [];
+
+  function splitRegionId(regionId) {
+    const match = regionId.match(/^(.*?)-(left|right)$/);
+    if (!match) {
+      return { baseId: regionId, side: "" };
+    }
+    return {
+      baseId: match[1],
+      side: match[2].charAt(0).toUpperCase() + match[2].slice(1)
+    };
+  }
+
+  function getMuscleDetails(path) {
+    const { baseId, side } = splitRegionId(path.dataset.muscle || path.id);
+    const data = muscles[baseId];
+    if (!data) return null;
+    return { data, label: side ? `${side} ${data.name}` : data.name };
+  }
+
+  function buildSearchIndex() {
+    muscleIndex = musclePaths
+      .map((path) => {
+        const info = getMuscleDetails(path);
+        if (!info) return null;
+        return {
+          path,
+          label: info.label,
+          name: info.data.name,
+          key: (path.dataset.muscle || path.id).toLowerCase()
+        };
+      })
+      .filter(Boolean);
+  }
+
+  function getConstrainedPosition(element, clientX, clientY, xOffset = 14, yOffset = 14) {
+    const containerRect = anatomyContainer.getBoundingClientRect();
+    const elementRect = element.getBoundingClientRect();
+    let left = clientX - containerRect.left + xOffset;
+    let top = clientY - containerRect.top + yOffset;
+    if (left + elementRect.width > containerRect.width - 10) left = containerRect.width - elementRect.width - 10;
+    if (top + elementRect.height > containerRect.height - 10) top = containerRect.height - elementRect.height - 10;
+    return { left: Math.max(10, left), top: Math.max(10, top) };
+  }
+
+  function setElementPosition(element, left, top) {
+    element.style.left = `${left}px`;
+    element.style.top = `${top}px`;
+  }
+
+  function positionFloating(element, clientX, clientY, xOffset = 14, yOffset = 14) {
+    const next = getConstrainedPosition(element, clientX, clientY, xOffset, yOffset);
+    setElementPosition(element, next.left, next.top);
+  }
+
+  function stopHoverAnimation() {
+    if (hoverAnimationId) {
+      cancelAnimationFrame(hoverAnimationId);
+      hoverAnimationId = 0;
+    }
+  }
+
+  function animateHoverPreview() {
+    stopHoverAnimation();
+    const tick = () => {
+      if (hoverPreview.hidden) { hoverAnimationId = 0; return; }
+      const dx = hoverTargetPos.left - hoverCurrentPos.left;
+      const dy = hoverTargetPos.top - hoverCurrentPos.top;
+      hoverCurrentPos.left += dx * 0.24;
+      hoverCurrentPos.top += dy * 0.24;
+      setElementPosition(hoverPreview, hoverCurrentPos.left, hoverCurrentPos.top);
+      if (Math.abs(dx) < 0.4 && Math.abs(dy) < 0.4) {
+        hoverCurrentPos = { ...hoverTargetPos };
+        setElementPosition(hoverPreview, hoverCurrentPos.left, hoverCurrentPos.top);
+        hoverAnimationId = 0;
+        return;
+      }
+      hoverAnimationId = requestAnimationFrame(tick);
+    };
+    hoverAnimationId = requestAnimationFrame(tick);
+  }
+
+  function updateHoverTarget(clientX, clientY, immediate = false) {
+    hoverTargetPos = getConstrainedPosition(hoverPreview, clientX, clientY, 12, 12);
+    if (immediate || hoverPreview.hidden) {
+      hoverCurrentPos = { ...hoverTargetPos };
+      setElementPosition(hoverPreview, hoverCurrentPos.left, hoverCurrentPos.top);
+      return;
+    }
+    if (!hoverAnimationId) animateHoverPreview();
+  }
+
+  function showHoverPreview(path, sourceEvent) {
+    const info = getMuscleDetails(path);
+    if (!info) return;
+    if (hoverHideTimer) { clearTimeout(hoverHideTimer); hoverHideTimer = null; }
+    hoverName.textContent = info.label;
+    hoverDescription.textContent = info.data.description;
+    const wasHidden = hoverPreview.hidden;
+    hoverPreview.hidden = false;
+    updateHoverTarget(sourceEvent.clientX, sourceEvent.clientY, wasHidden);
+    requestAnimationFrame(() => { hoverPreview.classList.add("visible"); });
+  }
+
+  function hideHoverPreview() {
+    if (hoverHideTimer) { clearTimeout(hoverHideTimer); hoverHideTimer = null; }
+    hoverPreview.classList.remove("visible");
+    hoverHideTimer = setTimeout(() => {
+      hoverPreview.hidden = true;
+      stopHoverAnimation();
+    }, 120);
+  }
+
+  function closeTooltip() {
+    if (activePath) { activePath.classList.remove("active"); activePath = null; }
+    tooltipCard.classList.remove("visible");
+    tooltipCard.hidden = true;
+  }
+
+  function openTooltip(path, triggerEvent) {
+    const info = getMuscleDetails(path);
+    if (!info) return;
+    if (activePath) activePath.classList.remove("active");
+    activePath = path;
+    activePath.classList.add("active");
+    tooltipName.textContent = info.label;
+    tooltipDescription.textContent = info.data.description;
+    tooltipFunction.textContent = info.data.function;
+    tooltipPain.textContent = info.data.pain;
+    tooltipCard.hidden = false;
+    if (window.innerWidth > 768) {
+      positionFloating(tooltipCard, triggerEvent.clientX, triggerEvent.clientY, 18, 18);
+    }
+    requestAnimationFrame(() => { tooltipCard.classList.add("visible"); });
+  }
+
+  buildSearchIndex();
+
+  musclePaths.forEach((path) => {
+    path.addEventListener("mouseenter", (e) => showHoverPreview(path, e));
+    path.addEventListener("mousemove", (e) => { if (!hoverPreview.hidden) updateHoverTarget(e.clientX, e.clientY); });
+    path.addEventListener("mouseleave", () => hideHoverPreview());
+    path.addEventListener("focus", () => {
+      const rect = path.getBoundingClientRect();
+      showHoverPreview(path, { clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 });
+    });
+    path.addEventListener("blur", () => hideHoverPreview());
+    path.addEventListener("click", (e) => { e.stopPropagation(); hideHoverPreview(); openTooltip(path, e); });
+    path.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      hideHoverPreview();
+      const rect = path.getBoundingClientRect();
+      openTooltip(path, { clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 });
+    });
+  });
+
+  tooltipClose.addEventListener("click", (e) => { e.stopPropagation(); closeTooltip(); });
+
+  anatomyContainer.addEventListener("click", (e) => {
+    if (!e.target.closest(".muscle-path") && !e.target.closest(".tooltip-card")) {
+      hideHoverPreview();
+      closeTooltip();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { hideHoverPreview(); closeTooltip(); }
+  });
+});
+    </script>
+  </body>
+</html>
