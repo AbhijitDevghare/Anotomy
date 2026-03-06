@@ -6,16 +6,16 @@
     <title>Interactive Muscle Pain Map</title>
     <style>
 :root {
-  --primary-color: #2c7be5;
-  --accent-color: #00a8a8;
-  --text-color: #1c2b36;
-  --page-bg: #ffffff;
-  --ink: var(--text-color);
-  --muted: #5d7285;
-  --card-bg: rgba(255, 255, 255, 0.96);
-  --card-border: rgba(44, 123, 229, 0.2);
-  --pain-red: #ff2f3f;
-  --path-stroke: rgba(255, 55, 72, 0.2);
+  --voltiva-brown: #3a2a23;
+  --voltiva-accent: #a36b5a;
+  --voltiva-light: #f6f2ee;
+  --voltiva-text: #5f4a42;
+  --voltiva-muted: #9c8880;
+  --voltiva-border: #e8e0dc;
+  --card-bg: #ffffff;
+  --card-border: #e8e0dc;
+  --pain-red: #a36b5a;
+  --path-stroke: rgba(163, 107, 90, 0.25);
 }
 
 *,
@@ -28,9 +28,9 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--page-bg);
-  color: var(--ink);
-  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  background: var(--voltiva-light);
+  color: var(--voltiva-text);
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
 }
 
 body {
@@ -41,8 +41,8 @@ body {
 
 .pain-map-section {
   width: 100%;
-  padding: 48px 16px 56px;
-  background: var(--page-bg);
+  padding: 56px 16px 64px;
+  background: var(--voltiva-light);
 }
 
 .container {
@@ -52,15 +52,16 @@ body {
 }
 
 .pain-map-heading {
-  margin: 0 0 8px;
-  font-size: clamp(1.4rem, 2vw + 1rem, 2.2rem);
-  color: var(--text-color);
-  letter-spacing: 0.02em;
+  margin: 0 0 10px;
+  font-size: clamp(1.6rem, 2vw + 1rem, 2.2rem);
+  font-weight: 600;
+  color: var(--voltiva-brown);
+  letter-spacing: 0.01em;
 }
 
 .pain-map-subtitle {
-  margin: 0 0 28px;
-  color: var(--muted);
+  margin: 0 0 32px;
+  color: var(--voltiva-muted);
   font-size: clamp(0.9rem, 0.7vw + 0.7rem, 1.05rem);
 }
 
@@ -69,14 +70,10 @@ body {
   width: min(96vw, 610px);
   margin: 0 auto;
   aspect-ratio: 3124 / 5284;
-  border-radius: 18px;
+  border-radius: 16px;
   overflow: visible;
-  box-shadow:
-    0 12px 36px rgba(31, 56, 78, 0.16),
-    inset 0 0 0 1px rgba(27, 61, 87, 0.12);
-  background:
-    linear-gradient(180deg, rgba(228, 241, 255, 0.56), rgba(255, 255, 255, 0.9)),
-    #ffffff;
+  box-shadow: 0 8px 24px rgba(58, 42, 35, 0.10);
+  background: #ffffff;
 }
 
 .anatomy-image,
@@ -134,9 +131,9 @@ body {
 .muscle-path:hover,
 .muscle-path:focus-visible,
 .muscle-path.active {
-  fill-opacity: 0.42;
-  stroke-opacity: 0.95;
-  filter: drop-shadow(0 0 7px rgba(255, 42, 58, 0.75));
+  fill-opacity: 0.35;
+  stroke-opacity: 0.9;
+  filter: drop-shadow(0 0 6px rgba(163, 107, 90, 0.65));
 }
 
 .anatomy-container.show-regions .muscle-path:hover,
@@ -154,19 +151,17 @@ body {
   position: absolute;
   z-index: 14;
   width: clamp(180px, 30vw, 265px);
-  padding: 8px 11px;
+  padding: 10px 13px;
   border-radius: 10px;
-  border: 1px solid rgba(22, 63, 94, 0.35);
-  background: rgba(20, 58, 88, 0.92);
-  color: #f4fbff;
+  border: 1px solid var(--voltiva-border);
+  background: var(--voltiva-brown);
+  color: #f6f2ee;
   font-size: 0.78rem;
   letter-spacing: 0.01em;
   text-align: left;
   white-space: normal;
   pointer-events: none;
-  box-shadow:
-    0 8px 20px rgba(14, 35, 54, 0.24),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 20px rgba(58, 42, 35, 0.22);
   opacity: 0;
   transform: translateY(4px);
   transition: opacity 0.14s ease, transform 0.14s ease;
@@ -190,7 +185,7 @@ body {
   margin: 0;
   font-size: 0.74rem;
   line-height: 1.3;
-  color: #dcefff;
+  color: #e8ddd9;
 }
 
 .tooltip-card {
@@ -198,13 +193,11 @@ body {
   z-index: 20;
   max-width: min(280px, 84%);
   text-align: left;
-  padding: 14px 14px 12px;
-  border-radius: 14px;
-  border: 1px solid var(--card-border);
+  padding: 16px 16px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--voltiva-border);
   background: var(--card-bg);
-  box-shadow:
-    0 14px 34px rgba(20, 44, 68, 0.25),
-    0 2px 8px rgba(20, 44, 68, 0.1);
+  box-shadow: 0 10px 25px rgba(58, 42, 35, 0.12);
   backdrop-filter: blur(4px);
   opacity: 0;
   transform: translateY(8px);
@@ -221,8 +214,8 @@ body {
   top: 8px;
   right: 8px;
   border: 0;
-  background: #eaf3ff;
-  color: #184b75;
+  background: var(--voltiva-light);
+  color: var(--voltiva-brown);
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -232,20 +225,21 @@ body {
 }
 
 .tooltip-close:hover {
-  background: #dcecff;
+  background: var(--voltiva-border);
 }
 
 .tooltip-card h2 {
   margin: 0 26px 7px 0;
-  font-size: 1.1rem;
-  color: #163b59;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--voltiva-brown);
 }
 
 .tooltip-card p {
   margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.45;
-  color: #2e4f67;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--voltiva-text);
 }
 
 .pain-line {
